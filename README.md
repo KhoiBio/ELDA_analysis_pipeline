@@ -419,9 +419,7 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 ## 📞 Contact
 
 For questions or support:
-- **Email**: your.email@institution.edu
-- **Twitter**: [@yourhandle](https://twitter.com/yourhandle)
-- **Issue Tracker**: [GitHub Issues](https://github.com/yourusername/elda-analysis/issues)
+- **Email**: khoih2023@gmail.com
 
 ---
 

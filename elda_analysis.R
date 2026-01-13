@@ -1,35 +1,9 @@
 library(statmod)
 
-# =============================================================================
-# EXTREME LIMITING DILUTION ANALYSIS (ELDA) - COMPLETE WORKFLOW
-# =============================================================================
-# This script performs a comprehensive ELDA analysis including:
-# - Stem cell frequency estimation with confidence intervals
-# - Statistical comparison between treatment groups
-# - Model validation tests (goodness of fit)
-# - Pairwise group comparisons
-# - Visualization of results
-# =============================================================================
+# Open PDF device
+pdf("Limiting_Dilution_Analysis_Results.pdf", width = 8.5, height = 11)
 
-cat("\n")
-cat("===============================================================================\n")
-cat("           EXTREME LIMITING DILUTION ANALYSIS (ELDA) - START\n")
-cat("===============================================================================\n\n")
-
-# -----------------------------------------------------------------------------
-# STEP 1: DATA ENTRY
-# -----------------------------------------------------------------------------
-# Purpose: Create a dataframe containing your experimental data
-# Required columns:
-#   - cells: number of cells plated per well
-#   - positive: number of wells that showed colony growth
-#   - tested: total number of wells tested at each dose
-#   - group: treatment/condition name for each observation
-# -----------------------------------------------------------------------------
-
-cat("LOADING DATA\n")
-cat("-----------------------------------------------------------------------------\n")
-
+# 1. DATA ENTRY
 elda_data <- data.frame(
   cells = c(50, 40, 30, 20, 10, 50, 40, 30, 20, 10, 50, 40, 30, 20, 10),
   positive = c(10, 10, 10, 10, 8, 4, 3, 1, 0, 0, 6, 7, 0, 4, 1),
@@ -40,271 +14,238 @@ elda_data <- data.frame(
     rep("GSC8-11_2Gyx3_DMSOctrl", 5)
   )
 )
-
-# Convert group to factor for proper statistical analysis
 elda_data$group <- factor(elda_data$group)
 
-cat("Data loaded successfully!\n")
-cat("  Number of observations:", nrow(elda_data), "\n")
-cat("  Treatment groups:", nlevels(elda_data$group), "\n\n")
-
-# -----------------------------------------------------------------------------
-# RUN ELDA ANALYSIS
-# -----------------------------------------------------------------------------
-# Purpose: Calculate stem cell frequencies using maximum likelihood estimation
-# Parameters:
-#   - response: number of positive wells
-#   - dose: number of cells plated
-#   - tested: total wells tested
-#   - group: treatment groups
-#   - observed: FALSE uses bias-reduced estimates (more accurate)
-# -----------------------------------------------------------------------------
-
-cat("RUNNING ELDA ANALYSIS\n")
-cat("-----------------------------------------------------------------------------\n")
-
+# 2. RUN MAIN ANALYSIS
 elda_result <- elda(
   response = elda_data$positive,
   dose = elda_data$cells,
   tested = elda_data$tested,
   group = elda_data$group,
-  observed = FALSE  # Use bias-reduced estimates
+  observed = TRUE,
+  test.unit.slope = TRUE
 )
 
-cat("ELDA analysis completed!\n\n")
-
-# -----------------------------------------------------------------------------
-# STEM CELL FREQUENCY ESTIMATES
-# -----------------------------------------------------------------------------
-# Purpose: Display the estimated stem cell frequencies with confidence intervals
-# Interpretation: The "Estimate" tells you how many cells are needed to 
-#                 contain one stem cell (lower = higher stem cell frequency)
-# -----------------------------------------------------------------------------
-
-cat("STEM CELL FREQUENCY ESTIMATES\n")
-cat("-----------------------------------------------------------------------------\n")
-cat("Interpretation: 'Estimate' = number of cells needed per stem cell\n")
-cat("                Lower values indicate HIGHER stem cell content\n\n")
-
-# Create formatted table
-freq_table <- data.frame(
-  Group = rownames(elda_result$CI),
-  Estimate = round(elda_result$CI[, 2], 2),
-  Lower_CI = round(elda_result$CI[, 3], 2),
-  Upper_CI = round(elda_result$CI[, 1], 2)
-)
-
-print(freq_table, row.names = FALSE)
-cat("\n\n")
-
-# -----------------------------------------------------------------------------
-# OVERALL GROUP COMPARISON
-# -----------------------------------------------------------------------------
-# Purpose: Test if there are statistically significant differences in stem 
-#          cell frequency between ANY of the treatment groups
-# Null Hypothesis: All groups have the same stem cell frequency
-# -----------------------------------------------------------------------------
-
-cat("OVERALL TEST FOR GROUP DIFFERENCES\n")
-cat("-----------------------------------------------------------------------------\n")
-cat("Tests: Are there significant differences between ANY groups?\n\n")
-
-# Create formatted table for overall test
-overall_table <- data.frame(
-  Test = "Overall",
-  Chisq = round(as.numeric(elda_result$test.difference[1]), 2),
-  DF = as.numeric(elda_result$test.difference[3]),
-  P_Value = formatC(as.numeric(elda_result$test.difference[2]), format = "e", digits = 2)
-)
-
-print(overall_table, row.names = FALSE)
-
-# Interpretation
-overall_p <- as.numeric(elda_result$test.difference[2])
-cat("\nInterpretation: ")
-if (overall_p < 0.001) {
-  cat("*** HIGHLY SIGNIFICANT (p < 0.001) - Groups differ substantially\n\n\n")
-} else if (overall_p < 0.05) {
-  cat("** SIGNIFICANT (p < 0.05) - Groups show differences\n\n\n")
-} else {
-  cat("NOT SIGNIFICANT (p >= 0.05) - No evidence of group differences\n\n\n")
+# Helper function to draw a nice table
+draw_table <- function(table_x, table_y, headers, data_rows, col_widths, cell_height = 0.03) {
+  n_rows <- length(data_rows) + 1  # +1 for header
+  n_cols <- length(headers)
+  total_width <- sum(col_widths)
+  
+  # Outer border
+  rect(table_x, table_y - n_rows*cell_height, table_x + total_width, table_y, lwd = 2)
+  
+  # Horizontal lines
+  for (i in 0:n_rows) {
+    segments(table_x, table_y - i*cell_height, table_x + total_width, table_y - i*cell_height, lwd = 1)
+  }
+  
+  # Vertical lines
+  x_pos <- table_x
+  for (i in 0:n_cols) {
+    segments(x_pos, table_y, x_pos, table_y - n_rows*cell_height, lwd = 1)
+    if (i < n_cols) {
+      x_pos <- x_pos + col_widths[i + 1]
+    }
+  }
+  
+  # Headers
+  x_pos <- table_x
+  for (i in 1:n_cols) {
+    text(x_pos + col_widths[i]/2, table_y - cell_height/2, headers[i], cex = 0.75, font = 2)
+    x_pos <- x_pos + col_widths[i]
+  }
+  
+  # Data rows
+  for (i in 1:length(data_rows)) {
+    row_y <- table_y - (i+1)*cell_height + cell_height/2
+    x_pos <- table_x
+    for (j in 1:length(data_rows[[i]])) {
+      text(x_pos + col_widths[j]/2, row_y, data_rows[[i]][j], cex = 0.65)
+      x_pos <- x_pos + col_widths[j]
+    }
+  }
+  
+  # Return the bottom y position
+  return(table_y - n_rows*cell_height)
 }
 
-# -----------------------------------------------------------------------------
-# GOODNESS OF FIT TESTS
-# -----------------------------------------------------------------------------
-# Purpose: Validate that the ELDA model assumptions are met and the fit is good
-# Three tests:
-#   1. Likelihood Ratio: Tests if groups have parallel slopes (single-hit model)
-#   2. Goodness of Fit: Tests if the model fits the observed data adequately
-#   3. Overdispersion: Tests for extra variability beyond binomial expectation
-# -----------------------------------------------------------------------------
+# 3. CREATE TEXT OUTPUT FOR FIRST PAGE
+par(mar = c(0, 0, 0, 0))
+plot.new()
+plot.window(xlim = c(0, 1), ylim = c(0, 1))
 
-cat("MODEL VALIDATION - GOODNESS OF FIT TESTS\n")
-cat("-----------------------------------------------------------------------------\n")
-cat("These tests check if the ELDA model assumptions are valid\n\n")
+y_pos <- 0.98
+line_height <- 0.020
 
-# Prepare data for GLM analysis
-# negative = number of wells WITHOUT colonies
-negative <- elda_data$tested - elda_data$positive
-y <- cbind(elda_data$positive, negative)
+# Helper function to add text
+add_text <- function(text, size = 0.75, font = 1, x = 0.05) {
+  text(x, y_pos, text, adj = c(0, 1), cex = size, family = "mono", font = font)
+  y_pos <<- y_pos - line_height
+}
 
-# Fit three nested models with increasing complexity:
+# Header information
+add_text('The value of the confidence choice entered was "0.95"')
+add_text('The value of the observed choice is "TRUE"')
+add_text('The value of the test_unit_slope choice is "TRUE"')
+add_text('The value of the test_difference choice is "TRUE"')
+add_text('Limiting dilution data entered.')
+y_pos <- y_pos - line_height
 
-# Model 1 (Full): Each group gets its own slope AND intercept
-#         Formula: y ~ log(cells) * group  (expands to: log(cells) + group + log(cells):group)
-#         Interpretation: Groups can have completely different dose-response curves
-model_full <- glm(y ~ log(elda_data$cells) * elda_data$group, 
-                  family = binomial(link = "cloglog"))
+# Data table - using nice table format
+table_y <- y_pos
+headers <- c("Counter", "Dose", "Tested", "Response", "Group")
+col_widths <- c(0.08, 0.06, 0.07, 0.09, 0.35)
 
-# Model 2 (Single-hit): All groups have SAME slope but different intercepts
-#         Formula: y ~ log(cells) + group  (no interaction term)
-#         Interpretation: Groups differ in frequency but follow same single-hit kinetics
-#         This is the STANDARD ELDA assumption
-model_single_hit <- glm(y ~ log(elda_data$cells) + elda_data$group, 
-                        family = binomial(link = "cloglog"))
+data_rows <- list()
+for (i in 1:nrow(elda_data)) {
+  data_rows[[i]] <- c(
+    as.character(i),
+    as.character(elda_data$cells[i]),
+    as.character(elda_data$tested[i]),
+    as.character(elda_data$positive[i]),
+    as.character(elda_data$group[i])
+  )
+}
 
-# Model 3 (Null): All groups are identical
-#         Formula: y ~ log(cells)  (no group term at all)
-#         Interpretation: No differences between groups
-model_null <- glm(y ~ log(elda_data$cells), 
-                  family = binomial(link = "cloglog"))
+y_pos <- draw_table(0.05, table_y, headers, data_rows, col_widths, cell_height = 0.025)
+y_pos <- y_pos - line_height * 1.5
 
-# Test 1: Likelihood Ratio Test
-# Compares: Single-hit model vs Full model
-# Question: Do we need different slopes, or are parallel slopes sufficient?
-lr_test <- anova(model_single_hit, model_full, test = "Chisq")
+add_text(sprintf("The number of lines of data entered = %d", nrow(elda_data)))
+add_text("Plot results has been checked")
+y_pos <- y_pos - line_height
 
-# Test 2: Goodness of Fit (Deviance Test)
-# Compares: Model predictions vs observed data
-# Question: Does the single-hit model fit the data well?
-deviance_test <- model_single_hit$deviance
-df_resid <- model_single_hit$df.residual
-p_gof <- pchisq(deviance_test, df_resid, lower.tail = FALSE)
+# Confidence intervals table
+add_text("Confidence intervals for")
+add_text("1/(stem cell frequency)")
+y_pos <- y_pos - line_height
 
-# Test 3: Overdispersion Test (Pearson Chi-square)
-# Compares: Observed variance vs expected binomial variance
-# Question: Is there extra variability beyond what's expected?
-fitted_probs <- fitted(model_single_hit)
-pearson_resid <- (elda_data$positive - elda_data$tested * fitted_probs) / 
-  sqrt(elda_data$tested * fitted_probs * (1 - fitted_probs))
-pearson_chisq <- sum(pearson_resid^2)
-p_pearson <- pchisq(pearson_chisq, df_resid, lower.tail = FALSE)
+table_y <- y_pos
+headers <- c("Group", "Lower", "Estimate", "Upper")
+col_widths <- c(0.30, 0.10, 0.10, 0.10)
 
-# Create formatted results table
-gof_table <- data.frame(
-  Test = c("Likelihood_Ratio", "Goodness_of_Fit", "Overdispersion"),
-  Chisq = round(c(lr_test$Deviance[2], deviance_test, pearson_chisq), 2),
-  DF = c(lr_test$Df[2], df_resid, df_resid),
-  P_Value = formatC(c(lr_test$`Pr(>Chi)`[2], p_gof, p_pearson), 
-                    format = "e", digits = 2)
+ci_table <- elda_result$CI
+data_rows <- list()
+for (i in 1:nrow(ci_table)) {
+  data_rows[[i]] <- c(
+    rownames(ci_table)[i],
+    sprintf("%.2f", ci_table[i, "Lower"]),
+    sprintf("%.2f", ci_table[i, "Estimate"]),
+    sprintf("%.2f", ci_table[i, "Upper"])
+  )
+}
+
+y_pos <- draw_table(0.05, table_y, headers, data_rows, col_widths, cell_height = 0.028)
+y_pos <- y_pos - line_height * 1.5
+
+# Overall test
+text(0.05, y_pos, "Overall test for", adj = c(0, 1), cex = 0.75, family = "mono")
+y_pos <- y_pos - line_height
+text(0.05, y_pos, "differences in stem", adj = c(0, 1), cex = 0.75, family = "mono")
+y_pos <- y_pos - line_height
+text(0.05, y_pos, "cell frequencies", adj = c(0, 1), cex = 0.75, family = "mono")
+y_pos <- y_pos - line_height
+text(0.05, y_pos, "between any of the", adj = c(0, 1), cex = 0.75, family = "mono")
+y_pos <- y_pos - line_height
+text(0.05, y_pos, "groups", adj = c(0, 1), cex = 0.75, family = "mono")
+y_pos <- y_pos - line_height * 1.2
+
+# Overall test table
+table_y <- y_pos
+headers <- c("Chisq", "DF", "P.value")
+col_widths <- c(0.08, 0.05, 0.12)
+
+overall_chisq <- round(as.numeric(elda_result$test.difference[1]), 1)
+overall_df <- as.numeric(elda_result$test.difference[3])
+overall_p <- formatC(as.numeric(elda_result$test.difference[2]), format="e", digits=2)
+
+data_rows <- list(
+  c(as.character(overall_chisq), as.character(overall_df), overall_p)
 )
 
-print(gof_table, row.names = FALSE)
+y_pos <- draw_table(0.05, table_y, headers, data_rows, col_widths, cell_height = 0.025)
+y_pos <- y_pos - line_height * 1.5
 
-# Interpretation of each test
-cat("\nInterpretations:\n")
-cat("  Likelihood_Ratio: ", 
-    ifelse(lr_test$`Pr(>Chi)`[2] > 0.05, 
-           "PASS - Parallel slopes OK (single-hit model valid)", 
-           "FAIL - Groups have different slopes"), "\n")
-cat("  Goodness_of_Fit:  ", 
-    ifelse(p_gof > 0.05, 
-           "PASS - Model fits data well", 
-           "FAIL - Poor model fit"), "\n")
-cat("  Overdispersion:   ", 
-    ifelse(p_pearson > 0.05, 
-           "PASS - No extra variability detected", 
-           "FAIL - Extra variability present"), "\n\n\n")
+# Pairwise header
+text(0.05, y_pos, "Pairwise tests for differences in stem cell frequencies", 
+     adj = c(0, 1), cex = 0.75, family = "mono")
 
-# -----------------------------------------------------------------------------
-# PAIRWISE COMPARISONS
-# -----------------------------------------------------------------------------
-# Purpose: Compare each pair of groups directly to identify which specific
-#          groups differ from each other
-# Useful when overall test is significant to pinpoint differences
-# -----------------------------------------------------------------------------
+# Start second page for pairwise comparisons
+plot.new()
+plot.window(xlim = c(0, 1), ylim = c(0, 1))
+par(mar = c(0, 0, 0, 0))
 
-cat("PAIRWISE COMPARISONS BETWEEN GROUPS\n")
-cat("-----------------------------------------------------------------------------\n")
-cat("Direct comparison of each group pair\n\n")
+y_pos <- 0.95
 
-# Get list of all groups
+# Pairwise comparisons table
 groups <- levels(elda_data$group)
-
-# Initialize empty dataframe to store results
-pairwise_results <- data.frame()
-
-# Loop through all pairs of groups
-for (i in 1:(length(groups) - 1)) {
-  for (j in (i + 1):length(groups)) {
-    
-    # Extract data for just these two groups
+pw_data <- list()
+for (i in 1:(length(groups)-1)) {
+  for (j in (i+1):length(groups)) {
     sub_data <- subset(elda_data, group %in% c(groups[i], groups[j]))
-    
-    # Run ELDA on this pair
-    pw_result <- limdil(sub_data$positive, sub_data$cells, 
-                        sub_data$tested, sub_data$group)
-    
-    # Store results in a row
-    row <- data.frame(
-      Group1 = groups[i],
-      Group2 = groups[j],
-      Chisq = round(as.numeric(pw_result$test.difference[1]), 2),
-      DF = as.numeric(pw_result$test.difference[3]),
-      P_Value = formatC(as.numeric(pw_result$test.difference[2]), 
-                        format = "e", digits = 2)
+    pw_result <- limdil(sub_data$positive, sub_data$cells, sub_data$tested, 
+                        sub_data$group, observed = TRUE)
+    pw_data[[length(pw_data) + 1]] <- c(
+      groups[i],
+      groups[j],
+      sprintf("%.2f", as.numeric(pw_result$test.difference[1])),
+      as.character(as.numeric(pw_result$test.difference[3])),
+      formatC(as.numeric(pw_result$test.difference[2]), format="e", digits=2)
     )
-    
-    # Add row to results table
-    pairwise_results <- rbind(pairwise_results, row)
   }
 }
 
-# Display results
-print(pairwise_results, row.names = FALSE)
-cat("\n\n")
+table_y <- y_pos
+headers <- c("Group 1", "Group 2", "Chisq", "DF", "Pr(>Chisq)")
+col_widths <- c(0.25, 0.25, 0.08, 0.05, 0.12)
 
-# -----------------------------------------------------------------------------
-# VISUALIZATION
-# -----------------------------------------------------------------------------
-# Purpose: Generate a log-fraction plot showing dose-response curves
-# The plot shows:
-#   - Each group as a separate line
-#   - Dots are observed data points
-#   - Lines are model fits
-#   - Parallel lines indicate valid single-hit model
-# -----------------------------------------------------------------------------
+y_pos <- draw_table(0.05, table_y, headers, pw_data, col_widths, cell_height = 0.03)
+y_pos <- y_pos - line_height * 2
 
-cat("GENERATING VISUALIZATION\n")
-cat("-----------------------------------------------------------------------------\n")
-cat("Creating log-fraction plot...\n\n")
+# Goodness of fit
+text(0.05, y_pos, "Goodness of fit tests. These test whether the log-dose slope", 
+     adj = c(0, 1), cex = 0.75, family = "mono")
+y_pos <- y_pos - line_height
+text(0.05, y_pos, "equals 1. Rejection of the tests may be due either to batch effects", 
+     adj = c(0, 1), cex = 0.75, family = "mono")
+y_pos <- y_pos - line_height
+text(0.05, y_pos, "(heterogeneity in the stem cell frequencies or assay success rate)", 
+     adj = c(0, 1), cex = 0.75, family = "mono")
+y_pos <- y_pos - line_height
+text(0.05, y_pos, "or to a failure of the stem cell hypothesis.", 
+     adj = c(0, 1), cex = 0.75, family = "mono")
+y_pos <- y_pos - line_height * 1.5
 
-plot(elda_result, main = "Limiting Dilution Analysis (ELDA)\nLog-Fraction Plot")
+slope_text <- sprintf("Estimated slope is %.2f", 
+                      elda_result$test.slope.wald["Estimate"])
+text(0.05, y_pos, slope_text, adj = c(0, 1), cex = 0.75, family = "mono")
+y_pos <- y_pos - line_height * 1.5
 
-cat("Plot generated!\n")
-cat("  - Each line represents one treatment group\n")
-cat("  - Dots show observed data points\n")
-cat("  - Lines should be parallel if single-hit model is valid\n")
-cat("  - Higher lines = higher stem cell frequency\n\n")
+# Goodness of fit table
+lr_chisq <- elda_result$test.slope.lr["z value"]^2
+lr_p <- elda_result$test.slope.lr["Pr(>|z|)"]
+score_chisq <- elda_result$test.slope.score.dose["z value"]^2
+score_p <- elda_result$test.slope.score.dose["Pr(>|z|)"]
 
-# -----------------------------------------------------------------------------
-# ANALYSIS COMPLETE
-# -----------------------------------------------------------------------------
+table_y <- y_pos
+headers <- c("Test", "Chisq", "DF", "P Value")
+col_widths <- c(0.42, 0.08, 0.05, 0.10)
 
-cat("===============================================================================\n")
-cat("                    ANALYSIS COMPLETE - SUMMARY\n")
-cat("===============================================================================\n\n")
+data_rows <- list(
+  c("Likelihood ratio test of single-hit model", 
+    sprintf("%.1f", lr_chisq), "1", sprintf("%.4f", lr_p)),
+  c("Score test of heterogeneity", 
+    sprintf("%.2f", score_chisq), "1", sprintf("%.4f", score_p))
+)
 
-cat("Results Summary:\n")
-cat("  1. Stem cell frequencies calculated for", nlevels(elda_data$group), "groups\n")
-cat("  2. Overall comparison:", 
-    ifelse(overall_p < 0.05, "SIGNIFICANT differences found", "No significant differences"), "\n")
-cat("  3. Model validation:", 
-    ifelse(all(c(lr_test$`Pr(>Chi)`[2], p_gof, p_pearson) > 0.05), 
-           "ALL TESTS PASSED", "Some warnings present"), "\n")
-cat("  4. Pairwise comparisons: Completed for all group pairs\n")
-cat("  5. Visualization: Plot generated\n\n")
+y_pos <- draw_table(0.05, table_y, headers, data_rows, col_widths, cell_height = 0.028)
 
-cat("Analysis finished successfully!\n")
-cat("===============================================================================\n\n")
+# New page for plot
+plot.new()
+par(mar = c(5, 4, 4, 2) + 0.1)
+plot(elda_result, main = "")
+
+# Close PDF device
+dev.off()
+
+cat("PDF created successfully: Limiting_Dilution_Analysis_Results.pdf\n")

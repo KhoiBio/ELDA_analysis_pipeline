@@ -25,6 +25,7 @@ This R script performs Extreme Limiting Dilution Analysis (ELDA) to estimate ste
 - ✅ **Batch processing** for multiple datasets
 - ✅ **Reproducible workflows** via R scripts
 - ✅ **Integration** with existing R analysis pipelines
+- To run : Rscript your_script.R elda_data.txt
 
 ### What is ELDA?
 

@@ -1,4 +1,8 @@
-library(statmod)
+# Check if statmod package is installed, install if not, then load it
+if (!require(statmod, quietly = TRUE)) {
+  install.packages("statmod")
+  library(statmod)
+}
 
 # Open PDF device
 pdf("Limiting_Dilution_Analysis_Results.pdf", width = 8.5, height = 11)
@@ -290,3 +294,4 @@ plot(elda_result, main = "")
 dev.off()
 
 cat("PDF created successfully: Limiting_Dilution_Analysis_Results.pdf\n")
+

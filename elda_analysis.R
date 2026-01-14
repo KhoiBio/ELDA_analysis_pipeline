@@ -3,20 +3,61 @@ library(statmod)
 # Open PDF device
 pdf("Limiting_Dilution_Analysis_Results.pdf", width = 8.5, height = 11)
 
-# 1. DATA ENTRY
-elda_data <- data.frame(
-  cells = c(50, 40, 30, 20, 10, 50, 40, 30, 20, 10, 50, 40, 30, 20, 10),
-  positive = c(10, 10, 10, 10, 8, 4, 3, 1, 0, 0, 6, 7, 0, 4, 1),
-  tested = rep(10, 15),
-  group = c(
-    rep("GSC8-11_mock_DMSOctrl", 5),
-    rep("GSC8-11_2Gyx3_ICM2.5uM", 5),
-    rep("GSC8-11_2Gyx3_DMSOctrl", 5)
-  )
+################################################################################
+# ELDA (Extreme Limiting Dilution Analysis) Data Import Script
+################################################################################
+# Description: This script reads ELDA experimental data from a text file
+#              provided as a command line argument and loads it into a dataframe
+#
+# Usage: Rscript script_name.R <path_to_data_file.txt>
+#
+# Input file format: Tab-delimited or comma-delimited text file with columns:
+#   - cells: Number of cells plated per well
+#   - positive: Number of wells with positive growth/response
+#   - tested: Total number of wells tested
+#   - group: Experimental group/condition identifier
+#
+# Author: Khoi Huynh
+# Date: 1/14/2026
+# Version: 1.0
+################################################################################
+
+# Get command line arguments
+args <- commandArgs(trailingOnly = TRUE)
+
+# Check if file path argument was provided
+if (length(args) == 0) {
+  stop("Error: No input file specified.\nUsage: Rscript script_name.R <path_to_data_file.txt>")
+}
+
+# Store the file path from the first argument
+input_file <- args[1]
+
+# Check if file exists
+if (!file.exists(input_file)) {
+  stop(paste("Error: File not found -", input_file))
+}
+
+# Read the data file into a dataframe
+# Assumes tab-delimited format; change sep parameter for other delimiters
+elda_data <- read.table(
+  input_file,
+  header = TRUE,           # First row contains column names
+  sep = "\t",              # Tab-delimited (use "," for CSV)
+  stringsAsFactors = FALSE # Keep strings as character vectors
 )
+
+# Display summary of loaded data
+cat("\nData successfully loaded from:", input_file, "\n")
+cat("Number of rows:", nrow(elda_data), "\n")
+cat("Number of columns:", ncol(elda_data), "\n\n")
+cat("Column names:", paste(names(elda_data), collapse = ", "), "\n\n")
+cat("First few rows:\n")
+print(head(elda_data))
+
 elda_data$group <- factor(elda_data$group)
 
-# 2. RUN MAIN ANALYSIS
+# RUN MAIN ANALYSIS
 elda_result <- elda(
   response = elda_data$positive,
   dose = elda_data$cells,
@@ -70,7 +111,7 @@ draw_table <- function(table_x, table_y, headers, data_rows, col_widths, cell_he
   return(table_y - n_rows*cell_height)
 }
 
-# 3. CREATE TEXT OUTPUT FOR FIRST PAGE
+# CREATE TEXT OUTPUT FOR FIRST PAGE
 par(mar = c(0, 0, 0, 0))
 plot.new()
 plot.window(xlim = c(0, 1), ylim = c(0, 1))

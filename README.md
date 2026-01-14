@@ -2,6 +2,8 @@
 
 An R script that **exactly replicates** the statistical analysis and output formatting from the official ELDA web tool ([bioinf.wehi.edu.au/software/elda](http://bioinf.wehi.edu.au/software/elda/)), enabling reproducible stem cell frequency estimation with professional PDF reports.
 
+The original paper :Hu, Y, and Smyth, GK (2009). ELDA: Extreme limiting dilution analysis for comparing depleted and enriched populations in stem cell and other assays. Journal of Immunological Methods 347, 70-78.
+
 ## 📋 Table of Contents
 
 - [Overview](#overview)
